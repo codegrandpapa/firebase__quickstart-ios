@@ -1,0 +1,37 @@
+name: check
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+    branches: main
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+    cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macOS-15
+    env:
+      MINT_PATH: ${{ github.workspace }}/mint
+    steps:
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+    - name: Cache Mint packages
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.MINT_PATH }}
+        key: ${{ runner.os }}-mint-${{ hashFiles('**/Mintfile') }}
+        restore-keys: ${{ runner.os }}-mint-
+
+    - name: Install mint
+      run:  brew install mint
+
+    - name: Bootstrap mint with swiftformat
+      run: mint bootstrap
+
+    - name: Check
+      run:  scripts/style.sh test-only

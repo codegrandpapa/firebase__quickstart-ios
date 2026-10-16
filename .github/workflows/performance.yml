@@ -1,0 +1,87 @@
+name: Performance
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/performance.yml'
+      - 'performance/**'
+      - 'scripts/*'
+      - 'scripts/performance.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/performance.yml'
+      - 'performance/**'
+      - 'scripts/*'
+      - 'scripts/performance.sh'
+
+  workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+    cancel-in-progress: true
+
+env:
+  SAMPLE: Performance
+  secrets_passphrase: ${{ secrets.GHASECRETSGPGPASSPHRASE1 }}
+
+jobs:
+  spm-buildonly:
+    name: spm
+    runs-on: macOS-15
+    env:
+      SPM: true
+      OS: iOS
+      DEVICE: iPhone 16
+      TEST: false
+      DIR: performance
+      SCHEME: PerformanceExample (iOS)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Setup
+        run: |
+          cd performance
+          gem install xcpretty
+          ../scripts/install_prereqs/performance.sh
+      - name: Build Swift
+        run: ./scripts/test.sh
+          
+  spm:
+    name: spm (Xcode ${{ matrix.xcode }} - ${{ matrix.os }})
+    runs-on: macOS-15
+    strategy:
+      matrix:
+        xcode: ["16.4"]
+        os: [iOS, tvOS]
+        include:
+          - os: iOS
+            device: iPhone 16
+            test: false
+            scheme: PerformanceExample (iOS)
+          - os: tvOS
+            device: Apple TV 4K (3rd generation) (at 1080p)
+            test: false
+            scheme: PerformanceExample (tvOS)
+    env:
+      SETUP: performance
+      SPM: true
+      DIR: performance
+      OS: ${{ matrix.os }}
+      DEVICE: ${{ matrix.device }}
+      TEST: ${{ matrix.test }}
+      SCHEME: ${{ matrix.scheme }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Setup
+        run: |
+          gem install xcpretty
+          cd $SETUP
+          ../scripts/install_prereqs/${SETUP}.sh
+      - name: Build and Test SwiftUI (${{ matrix.os }})
+        run: ./scripts/test.sh

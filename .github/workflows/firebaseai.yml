@@ -1,0 +1,66 @@
+name: firebaseai
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+    - 'firebaseai/**'
+    - '.github/workflows/firebaseai.yml'
+  schedule:
+    # Run every day at 11pm (PST) - cron uses UTC times
+    - cron:  '0 7 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SAMPLE: FirebaseAI
+
+jobs:
+  spm:
+    name: spm (Xcode ${{ matrix.xcode }} - ${{ matrix.platform }})
+    strategy:
+      matrix:
+        include:
+          - os: macos-26
+            xcode: "26.6"
+            platform: iOS
+            device: iPhone 17 Pro
+            ios_version: "26.5"
+          - os: macos-15
+            xcode: "26.2"
+            platform: iOS
+            device: iPhone 16
+            ios_version: "18.5"
+    runs-on: ${{ matrix.os }}
+    env:
+      SETUP: firebaseai
+      SPM: true
+      DIR: firebaseai
+      OS: ${{ matrix.platform }}
+      VERSION: ${{ matrix.ios_version }}
+      DEVICE: ${{ matrix.device }}
+      TEST: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+      - name: Install simulators in case they are missing.
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 5
+          retry_wait_seconds: 120
+          command: sudo xcodebuild -downloadPlatform iOS
+      - name: Setup
+        run: |
+          gem install xcpretty
+      - name: Placeholder GoogleService-Info.plist good enough for build only testing.
+        run: cp ./mock-GoogleService-Info.plist ./firebaseai/GoogleService-Info.plist
+      - name: Build and Test SwiftUI (${{ matrix.platform }})
+        run: ./scripts/test.sh

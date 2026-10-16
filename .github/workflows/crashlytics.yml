@@ -1,0 +1,69 @@
+name: Crashlytics
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/crashlytics.yml'
+      - 'crashlytics/**'
+      - 'scripts/*'
+      - 'scripts/crashlytics.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/crashlytics.yml'
+      - 'crashlytics/**'
+      - 'scripts/*'
+      - 'scripts/crashlytics.sh'
+
+  workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+    cancel-in-progress: true
+
+env:
+  SAMPLE: Crashlytics
+  secrets_passphrase: ${{ secrets.GHASECRETSGPGPASSPHRASE1 }}
+
+jobs:
+  spm:
+    name: spm (Xcode ${{ matrix.xcode }} - ${{ matrix.os }})
+    runs-on: macOS-15
+    strategy:
+      matrix:
+        xcode: ["16.4"]
+        os: [iOS, tvOS, macOS, watchOS]
+        include:
+          - os: iOS
+            device: iPhone 16
+            test: false # flaky
+          - os: tvOS
+            device: Apple TV 4K (3rd generation) (at 1080p)
+            test: true
+          - os: macOS
+            device: localhost
+            test: true
+          - os: watchOS
+            device: Apple Watch Series 5 - 44m
+            test: false
+    env:
+      SETUP: crashlytics
+      SPM: true
+      DIR: crashlytics
+      OS: ${{ matrix.os }}
+      DEVICE: ${{ matrix.device }}
+      TEST: ${{ matrix.test }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Setup
+        run: |
+          gem install xcpretty
+          cd $SETUP
+          ../scripts/install_prereqs/${SETUP}.sh
+      - name: Build and Test SwiftUI (${{ matrix.os }})
+        run: ./scripts/test.sh

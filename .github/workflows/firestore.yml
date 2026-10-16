@@ -1,0 +1,51 @@
+name: Firestore
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/firestore.yml'
+      - 'firestore/**'
+      - 'scripts/*'
+      - 'scripts/firestore.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/firestore.yml'
+      - 'firestore/**'
+      - 'scripts/*'
+      - 'scripts/firestore.sh'
+
+  workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+    cancel-in-progress: true
+
+env:
+  SAMPLE: Firestore
+  secrets_passphrase: ${{ secrets.GHASECRETSGPGPASSPHRASE1 }}
+
+jobs:
+  spm:
+    runs-on: macOS-15
+    env:
+      SPM: true
+      OS: iOS
+      DIR: firestore
+      DEVICE: iPhone 16
+      TEST: false
+      SCHEME: FirestoreExample
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Setup
+        run: |
+          cd firestore
+          gem install xcpretty
+          ../scripts/install_prereqs/firestore.sh
+      - name: Build
+        run: ./scripts/test.sh

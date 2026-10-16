@@ -1,0 +1,51 @@
+name: Remote Config
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/config.yml'
+      - 'config/**'
+      - 'scripts/*'
+      - 'scripts/config.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/config.yml'
+      - 'config/**'
+      - 'scripts/*'
+      - 'scripts/config.sh'
+
+  workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+    cancel-in-progress: true
+
+env:
+  SAMPLE: Config
+  secrets_passphrase: ${{ secrets.GHASECRETSGPGPASSPHRASE1 }}
+
+jobs:
+  spm:
+    runs-on: macOS-15
+    env:
+      OS: iOS
+      DEVICE: iPhone 16
+      DIR: config
+      SPM: true
+      SCHEME: ConfigExample
+      TEST: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Setup
+        run: |
+          cd config
+          ../scripts/install_prereqs/config.sh
+          xcrun simctl boot "iPhone 16"
+      - name: Build Swift
+        run: ./scripts/test.sh
